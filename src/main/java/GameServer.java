@@ -22,7 +22,7 @@ public class GameServer implements Closeable {
                 socket = serverSocket.accept();
             } catch (SocketException e) {
                 System.out.println("Socket closed, server closing.");
-                exit(1);
+                exit(0);
             }
             new ClientThread(serverSocket, socket).start();
         }
