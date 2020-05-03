@@ -5,7 +5,7 @@ import java.util.StringJoiner;
 public class Game {
     private final int[][] board = new int[19][19];
     private int activePlayer = 1; // 1 or 2
-    private boolean isRunning = false;
+    private GameState gameState = GameState.pending;
     private int winner = 0;
     private final String code;
 
@@ -18,16 +18,17 @@ public class Game {
     }
 
     public void start() {
-        isRunning = true;
+        gameState = GameState.running;
     }
 
-    public boolean isRunning() {
-        return isRunning;
+    public GameState getGameState() {
+        return gameState;
     }
 
     public void stop(int winner) {
-        isRunning = false;
+        gameState = GameState.stopped;
         this.winner = winner;
+        activePlayer = 3 - activePlayer;
     }
 
     public int getActivePlayer() {
@@ -52,6 +53,7 @@ public class Game {
 
     public String getState() {
         StringJoiner lines = new StringJoiner("\n");
+        lines.add("# GAME STATE #");
         for (int row = 0; row < 19; row++) {
             StringBuilder line = new StringBuilder();
             for (int col = 0; col < 19; col++) {
@@ -75,5 +77,9 @@ public class Game {
             default:
                 throw new Error();
         }
+    }
+
+    public int getWinner() {
+        return winner;
     }
 }
