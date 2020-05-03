@@ -35,33 +35,40 @@ public class ClientThread extends Thread {
             System.out.printf("[D%d] Sending game-state before turn.\n", player);
             reply(to, game.getState());
             try {
-                String request = from.readLine();
-                System.out.printf("[D%d] Got command: %s\n", player, request);
-                if (request == null) {
-                    throw new ClientQuitException();
-                }
+                String request;
 
-                String[] words = request.split(" ");
-                if (words.length != 2) {
+                while (true) {
+                    request = from.readLine();
+                    System.out.printf("[D%d] Got command: %s\n", player, request);
+                    if (request == null) {
+                        throw new ClientQuitException();
+                    }
                     if (request.equals("exit")) {
                         System.out.printf("[D%d] Player quit prematurely.\n", player);
                         reply(to, "Quitting game and returning to lobby.");
                         game.stop(0);
                         game.notify();
+                        return;
                     }
+
+                    String[] words = request.split(" ");
+                    try {
+                        if (words.length == 2) {
+                            int row = Integer.parseInt(words[0]);
+                            int col = Integer.parseInt(words[1]);
+                            if (game.placeByOne(row, col)) {
+                                break;
+                            }
+                        }
+                    } catch (NumberFormatException ignored) {
+                    }
+
                     reply(to, "Invalid move, try again.");
                     System.out.printf("[D%d] Player executed bad move.\n", player);
-                } else {
-                    try {
-                        game.placeByOne(Integer.parseInt(words[0]), Integer.parseInt(words[1]));
-
-                        System.out.printf("[D%d] Sending game-state after turn.\n", player);
-                        reply(to, game.getState());
-                    } catch (NumberFormatException e) {
-                        reply(to, "Invalid move, try again.");
-                        System.out.printf("[D%d] Player executed bad move.\n", player);
-                    }
                 }
+
+                System.out.printf("[D%d] Sending game-state after turn.\n", player);
+                reply(to, game.getState());
                 game.notify();
             } catch (IOException | ClientQuitException e) {
                 System.out.printf("[D%d] Client quit, or other problem. Stopping game prematurely.\n", player);

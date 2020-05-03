@@ -39,11 +39,20 @@ public class Game {
         if (row < 0 || row >= 19 || col < 0 || col >= 19) {
             return false;
         }
-        if (board[row][col] == 0) {
-            board[row][col] = activePlayer;
-            activePlayer = 3 - activePlayer;
-            return true;
+        if (board[row][col] != 0) {
+            return false;
         }
+
+        board[row][col] = activePlayer;
+        activePlayer = 3 - activePlayer;
+        if (makesWin(row, col)) {
+            winner = activePlayer;
+            gameState = GameState.stopped;
+        }
+        return true;
+    }
+
+    private boolean makesWin(int row, int col) {
         return false;
     }
 
