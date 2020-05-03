@@ -28,6 +28,7 @@ public class GameManager {
     }
 
     public Game getGame(String code) {
-        return map.get(code).get();
+        WeakReference<Game> ref = map.get(code);
+        return ref != null ? ref.get() : null;
     }
 }

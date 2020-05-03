@@ -21,54 +21,72 @@ public class ClientThread extends Thread {
         this.socket = socket;
     }
 
-    private void move(BufferedReader from, PrintWriter to, Game game) throws IOException, ClientQuitException {
-        try {
-            String request = from.readLine();
-
-            if (request == null) {
-                throw new ClientQuitException();
+    public void waitTurnAndMove(BufferedReader from, PrintWriter to, int player, final Game game) throws InterruptedException, IOException, ClientQuitException {
+        synchronized (game) {
+            while (game.getActivePlayer() != player) {
+                game.wait();
             }
-
-            String[] words = request.split(" ");
-            if (words.length != 2 || !game.place(Integer.parseInt(words[0]), Integer.parseInt(words[1]))) {
-                reply(to, "Invalid move, try again");
-            } else {
-                reply(to, game.getState());
+            if (game.isRunning()) {
+                return;
             }
-        } catch (IOException | ClientQuitException e) {
-            game.stop(0);
-            throw e;
-        }
-    }
+            reply(to, game.getState());
+            try {
+                String request = from.readLine();
 
-    private void await(PrintWriter to, Game game, int player) throws InterruptedException {
-        while (game.getActivePlayer() != player) {
-            wait(1000);
-        }
+                if (request == null) {
+                    throw new ClientQuitException();
+                }
 
-        reply(to, game.getState());
+                String[] words = request.split(" ");
+                if (words.length != 2 || !game.place(Integer.parseInt(words[0]), Integer.parseInt(words[1]))) {
+                    reply(to, "Invalid move, try again");
+                } else {
+                    reply(to, game.getState());
+                }
+                game.notify();
+            } catch (IOException | ClientQuitException e) {
+                game.stop(0);
+                game.notify();
+                throw e;
+            }
+        }
     }
 
     private void host(BufferedReader from, PrintWriter to) throws InterruptedException, IOException, ClientQuitException {
-        Game game = GameManager.getInstance().createGame();
+        final Game game = GameManager.getInstance().createGame();
         String code = game.getCode();
 
         reply(to, String.format("Game is up, code is %s.", code));
 
-        while (!game.isRunning()) {
-            wait(1000);
+        synchronized (game) {
+            while (!game.isRunning()) {
+                game.wait(1000);
+            }
         }
 
         reply(to, "The other player has joined, starting game.");
 
         while (game.isRunning()) {
-            move(from, to, game);
-            await(to, game, 1);
+            waitTurnAndMove(from, to, 1, game);
         }
     }
 
-    private void join(BufferedReader from, PrintWriter to, String code) {
-        Game game = GameManager.getInstance().getGame(code);
+    private void join(BufferedReader from, PrintWriter to, String code) throws InterruptedException, IOException, ClientQuitException {
+        final Game game = GameManager.getInstance().getGame(code);
+        if (game == null) {
+            reply(to, "Invalid game code.");
+            return;
+        }
+
+        reply(to, "Joined game. Please wait your turn.");
+        synchronized (game) {
+            game.start();
+            game.notify();
+        }
+
+        while(game.isRunning()) {
+            waitTurnAndMove(from, to, 2, game);
+        }
     }
 
     private void reply(PrintWriter writer, String response) {
